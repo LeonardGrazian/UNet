@@ -60,7 +60,7 @@ class UNet(nn.Module):
     def __init__(
         self,
         encoder_channels,
-        bottleneck_channels,
+        bottleneck_logits,
         decoder_channels
     ):
         super().__init__()
@@ -74,7 +74,7 @@ class UNet(nn.Module):
         self.enc3_ch = encoder_channels[2]
         self.enc4_ch = encoder_channels[3]
 
-        self.btnk_ch = bottleneck_channels
+        self.btnk_logits = bottleneck_logits
 
         self.dec1_ch = decoder_channels[0]
         self.dec2_ch = decoder_channels[1]
@@ -87,9 +87,9 @@ class UNet(nn.Module):
         self.enc3 = EncodeBlock(self.enc2_ch, self.enc3_ch)
         self.enc4 = EncodeBlock(self.enc3_ch, self.enc4_ch)
 
-        self.btnk = DoubleConvBlock(self.enc4_ch, self.btnk_ch)
+        self.btnk = DoubleConvBlock(self.enc4_ch, self.btnk_logits)
 
-        self.dec1 = DecodeBlock(self.btnk_ch, self.enc4_ch, self.dec1_ch)
+        self.dec1 = DecodeBlock(self.btnk_logits, self.enc4_ch, self.dec1_ch)
         self.dec2 = DecodeBlock(self.dec1_ch, self.enc3_ch, self.dec2_ch)
         self.dec3 = DecodeBlock(self.dec2_ch, self.enc2_ch, self.dec3_ch)
         self.dec4 = DecodeBlock(self.dec3_ch, self.enc1_ch, self.dec4_ch)

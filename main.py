@@ -7,6 +7,8 @@ import torch
 torch.manual_seed(94)
 from torch import nn
 
+from ray import tune
+
 from data_utils import get_dataloaders, load_model_state
 from modules import UNet
 
@@ -44,7 +46,9 @@ def test(test_dataloader, model, loss_fn):
             loss = loss_fn(Y_, Y)
             total_loss += loss
 
-    print('Evaluation loss={:.4}'.format(total_loss / total_batches))
+    eval_loss = total_loss / total_batches
+    print('Evaluation loss={:.4}'.format(eval_loss))
+    return eval_loss
 
 
 def inspect_output(test_dataloader, model):
@@ -78,26 +82,44 @@ def inspect_output(test_dataloader, model):
             break # end inspection if "break" is executed in inner loop
 
 
-def create_model():
-    train_dataloader, val_dataloader, _ = get_dataloaders()
+def create_model(config):
+    train_dataloader, val_dataloader, _ = get_dataloaders(config['batch_size'])
 
     model = UNet(
-        [64, 128, 256, 512],
-        1024,
-        [512, 256, 128, 64]
+        config['encoder_channels'],
+        config['bottleneck_logits'],
+        config['decoder_channels']
     ).to(DEVICE)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
 
+    checkpoint = session.get_checkpoint()
+    if checkpoint:
+        with checkpoint.as_directory() as checkpoint_dir:
+            model_state, optimizer_state = torch.load(
+                str(Path(checkpoint_dir) / 'checkpoint.pt')
+            )
+        model.load_state_dict(model_state)
+        optimizer.load_state_dict(optimizer_state)
+
+    eval_loss = None
     for ep in range(EPOCHS):
+        print()
         print('Working on epoch {}...'.format(ep))
         train(train_dataloader, model, loss_fn, optimizer)
-        test(val_dataloader, model, loss_fn)
-        print()
+        eval_loss = test(val_dataloader, model, loss_fn)
+
+        checkpoint_dir = 'my_model' # won't this be the same for all trials?
+        torch.save(
+            (model.state_dict(), optimizer.state_dict()),
+            str(Path(checkpoint_dir) / 'checkpoint.pt')
+        )
+        checkpoint = Checkpoint.from_directory(checkpoint_dir)
+        tune.report(loss=eval_loss, checkpoint=checkpoint)
     print('Done.')
 
-    return model
+    return {'model': model, 'loss': eval_loss}
 
 
 def main():
@@ -112,7 +134,7 @@ def main():
         load_model_state(model, MODEL_FILENAME, DEVICE)
     else:
         print('Creating new model...')
-        model = create_model()
+        model = create_model({})['model'] # TODO: use best config or a default
         torch.save(model.state_dict(), MODEL_FILENAME)
 
     print('Evaluating model on test set...')

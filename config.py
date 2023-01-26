@@ -1,7 +1,7 @@
 
 # data settings
 DATA_DIR = 'data/'
-MODEL_FILENAME = 'saved_models/unet.pth'
+MODEL_FILENAME = 'saved_models/unet.pt'
 VALIDATION_FRACTION = 0.1
 
 # training hyperparameters
