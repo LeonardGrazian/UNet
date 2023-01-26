@@ -1,7 +1,11 @@
 
+import os
+
 # data settings
-DATA_DIR = 'data/'
-MODEL_FILENAME = 'saved_models/unet.pt'
+DATA_DIR = '/Users/leonard/Workspace/ML/CV/UNet/data/'
+IMAGE_DIR = os.path.join(DATA_DIR, 'oxford-iiit-pet/images/')
+MASK_DIR = os.path.join(DATA_DIR, 'oxford-iiit-pet/annotations/trimaps/')
+MODEL_FILENAME = 'saved_models/unet.pth'
 VALIDATION_FRACTION = 0.1
 
 # training hyperparameters

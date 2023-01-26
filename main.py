@@ -8,6 +8,7 @@ torch.manual_seed(94)
 from torch import nn
 
 from ray import tune
+from ray.air import session
 
 from data_utils import get_dataloaders, load_model_state
 from modules import UNet
@@ -134,11 +135,17 @@ def main():
         load_model_state(model, MODEL_FILENAME, DEVICE)
     else:
         print('Creating new model...')
-        model = create_model({})['model'] # TODO: use best config or a default
+        model = create_model({
+            'encoder_channels': [64, 128, 256, 512],
+            'bottleneck_logits': 1024,
+            'decoder_channels': [64, 128, 256, 512],
+            'lr': 1e-4,
+            'batch_size': 32
+        })['model'] # TODO: use best config or a default
         torch.save(model.state_dict(), MODEL_FILENAME)
 
     print('Evaluating model on test set...')
-    _, _, test_dataloader = get_dataloaders()
+    _, _, test_dataloader = get_dataloaders(32)
     loss_fn = nn.CrossEntropyLoss()
     test(test_dataloader, model, loss_fn)
 

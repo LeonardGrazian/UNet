@@ -21,7 +21,11 @@ class OneHot(object):
         self.onehot_min = onehot_min
 
     def __call__(self, X):
-        assert len(X.shape) == 2
+        if len(X.shape) == 3:
+            assert not np.any(X[:, :, 0] != X[:, :, 1])
+            assert not np.any(X[:, :, 0] != X[:, :, 2])
+            assert not np.any(X[:, :, 1] != X[:, :, 2])
+            X = X[:, :, 0]
 
         z = np.zeros((X.size, self.onehot_dim))
         z[np.arange(X.size), X.flatten() - self.onehot_min] = 1
